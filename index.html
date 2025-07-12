@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Gerenciador de Racha 3x3</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@500;700&family=Poppins:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        :root {
+            --color-background: #1A1A1A;
+            --color-surface: rgba(35, 35, 35, 0.7);
+            --color-border: rgba(255, 255, 255, 0.1);
+            --color-primary: #FF7A00; /* Laranja Basquete */
+            --color-secondary: #00B2FF;
+            --color-text: #F0F0F0;
+            --color-text-muted: #A0A0A0;
+            --font-display: 'Teko', sans-serif;
+            --font-body: 'Poppins', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--color-background);
+            color: var(--color-text);
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23222222' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            overflow-x: hidden;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem 1rem; }
+
+        header h1 {
+            font-family: var(--font-display);
+            font-size: clamp(3rem, 7vw, 5.5rem);
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            text-align: center;
+            margin-bottom: 2rem;
+            color: var(--color-primary);
+            text-shadow: 0 0 15px rgba(255, 122, 0, 0.5);
+        }
+        
+        .card {
+            background: var(--color-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-header {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--color-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .setup-flow {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .setup-flow input {
+            width: 100px;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 2px solid var(--color-border);
+            background: var(--color-background);
+            color: var(--color-text);
+            font-size: 1.5rem;
+            text-align: center;
+            margin: 0 1rem;
+        }
+
+        .setup-flow button {
+            padding: 0.85rem 2.5rem;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(45deg, var(--color-primary), #FF5500);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .setup-flow button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 20px rgba(255, 122, 0, 0.4);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s 0.3s, opacity 0.3s ease;
+        }
+
+        .modal-overlay.visible {
+            visibility: visible;
+            opacity: 1;
+            transition-delay: 0s;
+        }
+
+        .modal-content {
+            background: #1A1A1A;
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid var(--color-primary);
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        #team-setup-container .team-entry {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        #team-setup-container input {
+            flex-grow: 1;
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            background: var(--color-surface);
+            color: var(--color-text);
+        }
+
+        .icon-picker {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .icon-picker span {
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 50%;
+            transition: background-color 0.2s, transform 0.2s;
+        }
+
+        .icon-picker span.selected {
+            background-color: var(--color-primary);
+            transform: scale(1.2);
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            visibility: hidden;
+        }
+
+        .left-column, .right-column { display: flex; flex-direction: column; gap: 2rem; }
+        .right-column { position: sticky; top: 2rem; align-self: start; }
+        
+        .game-list { display: flex; flex-direction: column; gap: 1rem; }
+        .game { padding: 1rem; background-color: rgba(0,0,0,0.2); border-radius: 10px; }
+        .game .match { display: flex; align-items: center; justify-content: center; gap: 1rem; }
+        .team-display { display: flex; align-items: center; gap: 0.75rem; flex: 1; }
+        .team-display.right { justify-content: flex-start; }
+        .team-display.left { justify-content: flex-end; }
+        .team-icon { font-size: 1.5rem; }
+        .team-name { font-weight: 600; font-size: 1.1rem; }
+        
+        .score-input {
+            width: 60px; height: 45px; background: var(--color-background); border: 2px solid var(--color-border);
+            border-radius: 8px; color: var(--color-text); font-size: 1.8rem; font-weight: 700; text-align: center;
+            outline: none; transition: border-color 0.2s ease; -moz-appearance: textfield;
+        }
+        .score-input::-webkit-outer-spin-button, .score-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .score-input:focus { border-color: var(--color-primary); }
+        .score-input:disabled { background-color: rgba(35,35,35,0.5); color: var(--color-text-muted); cursor: not-allowed; }
+        
+        .cestinha-section {
+            display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 1rem;
+            padding-top: 1rem; margin-top: 1rem; border-top: 1px dashed var(--color-border);
+        }
+
+        .cestinha-input {
+            background: var(--color-background); border: 1px solid var(--color-border); border-radius: 6px;
+            color: var(--color-text-muted); padding: 0.4rem 0.8rem; text-align: center; width: 150px;
+        }
+        .cestinha-points-input { width: 70px; }
+        .cestinha-input:focus { color: var(--color-text); border-color: var(--color-secondary); outline: none; }
+        
+        .standings-table { width: 100%; border-collapse: collapse; }
+        .standings-table thead th { text-align: center; padding: 0.75rem 0.5rem; color: var(--color-primary); font-size: 0.8rem; text-transform: uppercase; }
+        .standings-table thead th.team-header { text-align: left; }
+        .standings-table tbody tr { border-top: 1px solid var(--color-border); }
+        .standings-table tbody td { text-align: center; padding: 1rem 0.5rem; font-weight: 600; }
+        .standings-table .pos, .standings-table .points { font-weight: 700; }
+        .standings-table .team-cell { text-align: left; }
+        
+        .final-card { background: linear-gradient(45deg, #331a00, #804000); border-color: var(--color-primary); }
+        .final-match { display: flex; justify-content: space-around; align-items: center; padding: 1rem; }
+        .finalist { font-size: clamp(1.2rem, 3vw, 2rem); font-weight: 900; }
+        
+        .list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+        .list li { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--color-border); }
+        .list li:last-child { border-bottom: none; }
+        .list .name { font-weight: 600; color: var(--color-text); }
+        .list .count { font-weight: 700; font-size: 1.2rem; color: var(--color-secondary); }
+        .rules-list { padding-left: 1.5rem; }
+        .rules-list li { padding: 0.25rem 0; color: var(--color-text-muted); border: none; justify-content: flex-start; }
+        
+        #final-winner-display {
+            text-align: center; margin-top: 1rem; font-family: var(--font-display);
+            font-size: 2.5rem; color: var(--color-primary); text-transform: uppercase;
+        }
+
+        @media (max-width: 1024px) {
+            .main-grid { grid-template-columns: 1fr; }
+            .right-column { position: static; }
+        }
+
+        footer { text-align: center; margin-top: 4rem; padding-top: 2rem; color: var(--color-text-muted); border-top: 1px solid var(--color-border); }
+    </style>
+</head>
+<body>
+
+    <div class="modal-overlay" id="team-setup-modal">
+        <div class="modal-content">
+            <h2 class="card-header">Configure os Times</h2>
+            <div id="team-setup-container"></div>
+            <button id="start-tournament-btn" style="width: 100%; margin-top: 1.5rem; padding: 0.75rem; border: none; border-radius: 8px; background-color: var(--color-primary); color: #000; font-weight: 700; font-size: 1.1rem; cursor: pointer;">Iniciar Torneio</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <header><h1>Sistema Gerenciador de Racha 3x3</h1></header>
+
+        <section class="card setup-flow">
+            <label for="num-teams-input">Número de Times:</label>
+            <input type="number" id="num-teams-input" value="4" min="2" max="20">
+            <button id="setup-teams-btn">Montar os Times</button>
+        </section>
+
+        <main class="main-grid" id="main-grid">
+            <div class="left-column">
+                <section class="card games-card">
+                    <h2 class="card-header">Placar dos Jogos</h2>
+                    <div class="game-list" id="game-list-container"></div>
+                </section>
+                <section class="card final-card">
+                    <h2 class="card-header" style="justify-content: center; border: none;">GRANDE FINAL</h2>
+                    <div class="final-match">
+                        <div id="finalist1" class="finalist team-display">1º Colocado</div>
+                        <input type="number" class="score-input" id="final-score-1" min="0" max="12" disabled>
+                        <span>vs</span>
+                        <input type="number" class="score-input" id="final-score-2" min="0" max="12" disabled>
+                        <div id="finalist2" class="finalist team-display">2º Colocado</div>
+                    </div>
+                    <div id="final-winner-display"></div>
+                </section>
+            </div>
+            
+            <div class="right-column">
+                <aside class="card standings-card">
+                    <h2 class="card-header">Classificação</h2>
+                    <table class="standings-table">
+                        <thead><tr><th>#</th><th class="team-header">Time</th><th>P</th><th>J</th><th>V</th><th>SG</th></tr></thead>
+                        <tbody id="standings-body"></tbody>
+                    </table>
+                </aside>
+                <aside class="card top-scorers-card">
+                    <h2 class="card-header" style="border-color: var(--color-secondary);">Cestinhas do Racha</h2>
+                    <ul class="list" id="top-scorers-list"></ul>
+                </aside>
+                <aside class="card rules-card">
+                    <h2 class="card-header">Critérios de Desempate</h2>
+                    <ul class="list rules-list">
+                        <li>1. Maior Pontuação (P)</li><li>2. Maior Saldo de Cestas (SG)</li>
+                        <li>3. Mais Cestas Feitas (GP)</li><li>4. Confronto Direto</li><li>5. Sorteio</li>
+                    </ul>
+                </aside>
+            </div>
+        </main>
+        
+        <footer><p>Planejador de Rachão 3x3</p></footer>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    let TEAMS = [];
+    let games = [];
+    const ICONS = ['🏀', '🔥', '🏆', '👑', '⚡️', '💀', '🎯', '🚀', '🐺', '🦍'];
+
+    const numTeamsInput = document.getElementById('num-teams-input');
+    const setupTeamsBtn = document.getElementById('setup-teams-btn');
+    const startTournamentBtn = document.getElementById('start-tournament-btn');
+    const modal = document.getElementById('team-setup-modal');
+    const teamSetupContainer = document.getElementById('team-setup-container');
+    const mainGrid = document.getElementById('main-grid');
+    const gameListContainer = document.getElementById('game-list-container');
+    const standingsBody = document.getElementById('standings-body');
+    const topScorersList = document.getElementById('top-scorers-list');
+    const finalist1El = document.getElementById('finalist1');
+    const finalist2El = document.getElementById('finalist2');
+    const finalScore1Input = document.getElementById('final-score-1');
+    const finalScore2Input = document.getElementById('final-score-2');
+    const finalWinnerDisplay = document.getElementById('final-winner-display');
+
+    function setupTeamInputs() {
+        const numTeams = parseInt(numTeamsInput.value, 10);
+        teamSetupContainer.innerHTML = '';
+        for (let i = 0; i < numTeams; i++) {
+            const entry = document.createElement('div');
+            entry.className = 'team-entry';
+            entry.innerHTML = `
+                <input type="text" placeholder="Nome do Time ${i + 1}" value="Time ${i + 1}" data-id="${i}">
+                <div class="icon-picker" data-id="${i}">
+                    ${ICONS.map((icon, index) => `<span class="${index === i % ICONS.length ? 'selected' : ''}" data-icon="${icon}">${icon}</span>`).join('')}
+                </div>
+            `;
+            teamSetupContainer.appendChild(entry);
+        }
+        modal.classList.add('visible');
+    }
+
+    function scheduleGames(teams) {
+        const schedule = [];
+        let teamList = [...teams];
+
+        if (teamList.length % 2 !== 0) {
+            teamList.push({ id: 'bye', name: 'BYE', icon: '😴' });
+        }
+
+        const numRounds = teamList.length - 1;
+        const halfSize = teamList.length / 2;
+
+        for (let round = 0; round < numRounds; round++) {
+            for (let i = 0; i < halfSize; i++) {
+                const team1 = teamList[i];
+                const team2 = teamList[teamList.length - 1 - i];
+                if (team1.id !== 'bye' && team2.id !== 'bye') {
+                    schedule.push({ team1, team2, score1: '', score2: '', cestinha: '', cestinhaPontos: '' });
+                }
+            }
+            const lastTeam = teamList.pop();
+            teamList.splice(1, 0, lastTeam);
+        }
+        return schedule;
+    }
+
+    function generateTournament() {
+        const numTeams = parseInt(numTeamsInput.value, 10);
+        TEAMS = [];
+        for (let i = 0; i < numTeams; i++) {
+            const nameInput = teamSetupContainer.querySelector(`input[data-id="${i}"]`);
+            const selectedIcon = teamSetupContainer.querySelector(`.icon-picker[data-id="${i}"] .selected`);
+            TEAMS.push({
+                id: `team_${i}`,
+                name: nameInput.value.trim() || `Time ${i + 1}`,
+                icon: selectedIcon.dataset.icon
+            });
+        }
+        
+        modal.classList.remove('visible');
+        games = scheduleGames(TEAMS);
+
+        renderGames();
+        updateAndRenderAll();
+        
+        mainGrid.style.visibility = 'visible';
+        gsap.from('#main-grid .card', { y: 50, opacity: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out' });
+        confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+    }
+
+    function updateAndRenderAll() {
+        const stats = TEAMS.reduce((acc, team) => {
+            acc[team.id] = { ...team, p: 0, j: 0, v: 0, e: 0, d: 0, gp: 0, gc: 0, sg: 0 };
+            return acc;
+        }, {});
+
+        const topScorers = {};
+        let completedGamesCount = 0;
+
+        games.forEach(game => {
+            const score1 = game.score1 !== '' ? parseInt(game.score1, 10) : null;
+            const score2 = game.score2 !== '' ? parseInt(game.score2, 10) : null;
+            const cestinhaPontos = game.cestinhaPontos !== '' ? parseInt(game.cestinhaPontos, 10) : null;
+
+            if (game.cestinha && cestinhaPontos !== null && !isNaN(cestinhaPontos)) {
+                const scorerName = game.cestinha.trim();
+                if (scorerName) topScorers[scorerName] = (topScorers[scorerName] || 0) + cestinhaPontos;
+            }
+            
+            if (score1 !== null && score2 !== null && !isNaN(score1) && !isNaN(score2)) {
+                completedGamesCount++;
+                const { team1, team2 } = game;
+                stats[team1.id].j++; stats[team2.id].j++;
+                stats[team1.id].gp += score1; stats[team2.id].gp += score2;
+                stats[team1.id].gc += score2; stats[team2.id].gc += score1;
+
+                if (score1 > score2) { stats[team1.id].p += 3; stats[team1.id].v++; stats[team2.id].d++; } 
+                else if (score2 > score1) { stats[team2.id].p += 3; stats[team2.id].v++; stats[team1.id].d++; } 
+                else { stats[team1.id].p++; stats[team2.id].p++; stats[team1.id].e++; stats[team2.id].e++; }
+            }
+        });
+
+        Object.values(stats).forEach(s => { s.sg = s.gp - s.gc; });
+
+        const sortedTeams = Object.values(stats).sort((a, b) => b.p - a.p || b.sg - a.sg || b.gp - a.gp || a.name.localeCompare(b.name));
+        const sortedScorers = Object.entries(topScorers).sort(([, a], [, b]) => b - a);
+
+        renderStandings(sortedTeams);
+        renderTopScorers(sortedScorers);
+
+        if (completedGamesCount === games.length && games.length > 0) {
+            updateFinalists(sortedTeams[0], sortedTeams[1]);
+        } else {
+            resetFinalists();
+        }
+    }
+
+    function renderStandings(sortedTeams) {
+        const oldPositions = {};
+        standingsBody.querySelectorAll('tr').forEach(row => { oldPositions[row.dataset.teamId] = row.getBoundingClientRect(); });
+
+        standingsBody.innerHTML = '';
+        sortedTeams.forEach((stats, index) => {
+            const row = document.createElement('tr');
+            row.dataset.teamId = stats.id;
+            row.innerHTML = `<td class="pos">${index + 1}</td><td class="team-cell"><div class="team-display"><span class="team-icon">${stats.icon}</span><span class="team-name">${stats.name}</span></div></td><td class="points">${stats.p}</td><td>${stats.j}</td><td>${stats.v}</td><td>${stats.sg}</td>`;
+            standingsBody.appendChild(row);
+
+            const oldPos = oldPositions[stats.id];
+            if (oldPos) {
+                const newPos = row.getBoundingClientRect();
+                const deltaY = oldPos.top - newPos.top;
+                gsap.fromTo(row, { y: deltaY }, { y: 0, duration: 0.6, ease: 'power3.out' });
+            }
+        });
+    }
+
+    function renderTopScorers(sortedScorers) {
+        topScorersList.innerHTML = sortedScorers.length === 0 ? `<li style="justify-content: center; color: var(--color-text-muted);">Nenhum cestinha registrado.</li>` : sortedScorers.map(([name, count]) => `<li><span class="name">${name}</span><span class="count">${count} pts</span></li>`).join('');
+    }
+    
+    function updateFinalists(finalist1, finalist2) {
+        if (!finalist1 || !finalist2) return;
+        if (finalist1El.dataset.id === finalist1.id) return;
+        
+        finalScore1Input.disabled = false;
+        finalScore2Input.disabled = false;
+
+        const renderFinalist = (el, team) => {
+            el.dataset.id = team.id;
+            el.innerHTML = `<span class="team-icon">${team.icon}</span><span class="team-name">${team.name}</span>`;
+        };
+
+        const tl = gsap.timeline();
+        tl.to([finalist1El, finalist2El], { y: 20, opacity: 0, duration: 0.3, ease: 'power2.in' })
+          .call(() => { renderFinalist(finalist1El, finalist1); renderFinalist(finalist2El, finalist2); })
+          .to([finalist1El, finalist2El], { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: 'power3.out' });
+    }
+    
+    function resetFinalists() {
+        if (!finalist1El.dataset.id) return;
+        finalist1El.innerHTML = `1º Colocado`;
+        finalist2El.innerHTML = `2º Colocado`;
+        finalist1El.removeAttribute('data-id');
+        finalScore1Input.disabled = true;
+        finalScore2Input.disabled = true;
+        finalScore1Input.value = '';
+        finalScore2Input.value = '';
+        finalWinnerDisplay.innerHTML = '';
+    }
+
+    function renderGames() {
+        gameListContainer.innerHTML = games.map((game, index) => `
+            <div class="game">
+                <div class="match">
+                    <div class="team-display left"><span class="team-name">${game.team1.name}</span><span class="team-icon">${game.team1.icon}</span></div>
+                    <input type="number" class="score-input" data-index="${index}" data-team="1" min="0" max="12">
+                    <span>vs</span>
+                    <input type="number" class="score-input" data-index="${index}" data-team="2" min="0" max="12">
+                    <div class="team-display right"><span class="team-icon">${game.team2.icon}</span><span class="team-name">${game.team2.name}</span></div>
+                </div>
+                <div class="cestinha-section">
+                    <label style="color: var(--color-secondary); font-weight: 600;">Cestinha:</label>
+                    <input type="text" class="cestinha-input" data-index="${index}" placeholder="Nome do jogador">
+                    <input type="number" class="cestinha-input cestinha-points-input" data-index="${index}" min="0" max="12" placeholder="Pontos">
+                </div>
+            </div>`).join('');
+    }
+
+    function handleFinalScore() {
+        const score1 = finalScore1Input.value;
+        const score2 = finalScore2Input.value;
+
+        if (score1 !== '' && score2 !== '') {
+            const s1 = parseInt(score1, 10);
+            const s2 = parseInt(score2, 10);
+            let winnerEl;
+            if (s1 > s2) {
+                winnerEl = finalist1El;
+            } else if (s2 > s1) {
+                winnerEl = finalist2El;
+            } else {
+                finalWinnerDisplay.innerHTML = '';
+                return;
+            }
+            
+            const winnerIcon = winnerEl.querySelector('.team-icon').textContent;
+            const winnerName = winnerEl.querySelector('.team-name').textContent;
+            
+            finalWinnerDisplay.innerHTML = `🏆 ${winnerIcon} ${winnerName} CAMPEÃO! 🏆`;
+            gsap.from(finalWinnerDisplay, { scale: 0.5, opacity: 0, ease: 'back.out(1.7)', duration: 0.5 });
+            confetti({ particleCount: 200, spread: 120, origin: { y: 0.6 } });
+        }
+    }
+
+    gameListContainer.addEventListener('input', (e) => {
+        const index = e.target.dataset.index;
+        if (e.target.classList.contains('score-input')) {
+            games[index][`score${e.target.dataset.team}`] = e.target.value;
+        }
+        if (e.target.classList.contains('cestinha-input')) {
+            e.target.type === 'text' ? games[index].cestinha = e.target.value : games[index].cestinhaPontos = e.target.value;
+        }
+        updateAndRenderAll();
+    });
+    
+    teamSetupContainer.addEventListener('click', e => {
+        if (e.target.matches('.icon-picker span')) {
+            const picker = e.target.parentElement;
+            picker.querySelector('.selected')?.classList.remove('selected');
+e.target.classList.add('selected');
+        }
+    });
+    
+    setupTeamsBtn.addEventListener('click', setupTeamInputs);
+    startTournamentBtn.addEventListener('click', generateTournament);
+    finalScore1Input.addEventListener('input', handleFinalScore);
+    finalScore2Input.addEventListener('input', handleFinalScore);
+    
+    gsap.from('header > *', { y: -30, opacity: 0, duration: 0.7, stagger: 0.2, ease: 'power3.out', delay: 0.2 });
+    gsap.from('.setup-flow', { y: 30, opacity: 0, duration: 0.7, ease: 'power3.out', delay: 0.5 });
+});
+</script>
+
+</body>
+</html>
